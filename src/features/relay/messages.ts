@@ -1,3 +1,4 @@
+import { mentionScopeTags } from "../fork/mention-scope";
 import {
   forwardBody,
   forwardQuote,
@@ -453,6 +454,7 @@ export function createMessages(
             ...pickTags(channelId, mentions, picks),
             ...emojiTags(content),
             ...message.tags,
+            ...mentionScopeTags(content),
             ...signedMessageTokenTags(),
           ],
         },
@@ -490,9 +492,10 @@ export function createMessages(
           : undefined;
         if (options.mediaTargetUrl && !mediaTarget)
           throw new Error("A valid media target is required");
+        // Fork: a forward never declares a new file version.
         const caption = attachmentMessage(
           note,
-          options.attachments ?? [],
+          (options.attachments ?? []).map(({ supersedes: _, ...item }) => item),
           relayOrigin,
         );
         event.content = [
@@ -644,6 +647,7 @@ export function createMessages(
           ...(mediaTarget ? [[MEDIA_TARGET_TAG, mediaTarget]] : []),
           ...emojiTags(content),
           ...message.tags,
+          ...mentionScopeTags(content),
           ...signedMessageTokenTags(),
         ],
       });

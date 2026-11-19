@@ -2,6 +2,7 @@ import {
   REPLY_CORRELATION_MS,
   type LocalAgentSource,
 } from "../agents/local-activity";
+import { hereAlert } from "../fork/here-alert";
 import type { Communities } from "../communities/service";
 import { communityDestination } from "../communities/destination";
 import type { OpenTarget } from "../navigation/targets";
@@ -145,8 +146,12 @@ export function bindMessageNotifications(
         );
         // A reply whose conversation lookup is pending may become thread
         // attention; admission waits until the lookup decides it.
+        // Fork: `@here` alerts like a mention but is never one.
+        const here =
+          !attention.category && !attention.pending && !!attention.here;
         const category =
-          attention.category ?? (attention.pending ? "thread" : undefined);
+          attention.category ??
+          (attention.pending ? "thread" : here ? "mention" : undefined);
         const soloReply =
           category === "mention"
             ? localSoloAgentReply(
@@ -157,7 +162,7 @@ export function bindMessageNotifications(
             : undefined;
         if (
           !category ||
-          (attention.status !== "eligible" && !attention.pending) ||
+          (attention.status !== "eligible" && !attention.pending && !here) ||
           soloReply === "reply"
         )
           continue;
@@ -193,6 +198,14 @@ export function bindMessageNotifications(
               message.messageId,
             );
             const sync = owned.unread.sync();
+            if (here)
+              return hereAlert(
+                attention,
+                owned,
+                viewer,
+                message.channelId,
+                notifications.snapshot().preferences.notifyWhileViewing,
+              );
             // Explicit mentions bypass channel mute, as in the legacy policy —
             // including p-tagged messages in DM channels, whose category is
             // "direct". Unknown preferences must not briefly release ordinary

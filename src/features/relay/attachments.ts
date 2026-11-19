@@ -5,6 +5,10 @@ import {
   VIDEO_PREPARATION_MS,
 } from "./video-preparation.ts";
 import { IMETA_DIM, safeAttachmentName } from "./message-content.ts";
+import {
+  supersedesTag,
+  type VersionTarget,
+} from "../fork/file-versions/supersedes.ts";
 
 import {
   mediaByteLimit,
@@ -21,6 +25,8 @@ export type UploadedAttachment = Readonly<{
   sha256: string;
   dim?: string;
   voice?: Readonly<{ duration: number; waveform: readonly number[] }>;
+  /** Fork: the earlier file this upload is a new version of. */
+  supersedes?: VersionTarget;
 }>;
 /** A descriptor read back from device storage. */
 export function isUploadedAttachment(a: unknown): a is UploadedAttachment {
@@ -350,6 +356,7 @@ export function attachmentMessage(
       // The relay rejects waveform imeta fields. Recorded duration is also
       // not authoritative after conversion; playback reads the media duration.
     ]);
+    if (item.supersedes) tags.push(supersedesTag(item.supersedes, result.url));
     return attachmentMarkdown(name, result);
   });
   return {

@@ -1,3 +1,4 @@
+import { AttachmentVersionPicker } from "../fork/file-versions/VersionPicker";
 import { createPortal } from "react-dom";
 import { ForwardDisclosure } from "./ForwardDisclosure";
 import { pastedForward } from "./forward-clipboard";
@@ -3699,6 +3700,18 @@ function Composer({
             <ComposerAttachments
               media={session.media}
               renderers={extensions?.attachments}
+              version={
+                host && channelId && !submission?.attachments
+                  ? (item) => (
+                      <AttachmentVersionPicker
+                        session={host}
+                        channelId={channelId}
+                        item={item}
+                        setVersion={attachments.store.setVersion}
+                      />
+                    )
+                  : undefined
+              }
               items={attachments.items}
               gifs={gifs?.map((markdown) => ({
                 markdown,

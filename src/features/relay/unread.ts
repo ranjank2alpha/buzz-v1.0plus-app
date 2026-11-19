@@ -1,3 +1,4 @@
+import { channelScopeMentions, mentionScopeOf } from "../fork/mention-scope";
 import type { ProfileQueries } from "./profile-directory";
 import { workflowOwner } from "./workflow-attribution";
 import { agentAudience } from "./audience";
@@ -88,6 +89,8 @@ export type MessageAttention = Readonly<{
   category?: "mention" | "direct" | "thread";
   /** The event mentions the viewer, excluding trusted workflow-owner attribution. */
   mentioned?: boolean;
+  /** Fork: the event carries `@here`, which notifies but is never a mention. */
+  here?: true;
   rootId?: string;
   /** The reply's conversation is still being looked up; it may become thread
    * attention when the lookup finishes. */
@@ -741,6 +744,8 @@ export function createUnread({
   function mentionsViewer(event: RelayEvent): boolean {
     const tagged = (name: string, value: string) =>
       event.tags.some((tag) => tag[0] === name && tag[1] === value);
+    // Fork: `@channel` addresses every member but its author.
+    if (channelScopeMentions(event, viewer)) return true;
     if (!tagged("p", viewer)) return false;
     // The relay also p-tags the workflow owner for attribution. Only trusted
     // kind-9 workflow output may disambiguate that tag; ordinary senders cannot
@@ -1234,6 +1239,7 @@ export function createUnread({
       ...(kind ? { category: kind } : {}),
       ...(pending ? { pending: true } : {}),
       ...(entry.mentioned ? { mentioned: true } : {}),
+      ...(mentionScopeOf(event.tags) === "here" ? { here: true as const } : {}),
       ...(entry.rootId ? { rootId: entry.rootId } : {}),
       unread: isUnread(entry, state, dm, -1, threadReadThrough),
       forced: forcedMessages.get(channelId)?.has(messageId) ?? false,

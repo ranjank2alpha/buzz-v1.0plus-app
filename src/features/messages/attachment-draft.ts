@@ -10,6 +10,7 @@ import {
 } from "../relay/attachments";
 import { prepareAttachment } from "./prepare-attachment";
 import { clearView, readView, writeView } from "../../shared/view-state";
+import type { VersionTarget } from "../fork/file-versions/supersedes";
 
 export type DraftAttachment = Readonly<{
   id: string;
@@ -20,6 +21,8 @@ export type DraftAttachment = Readonly<{
   error?: string | undefined;
   /** Host-reported bytes for the current prepared transfer. */
   transfer?: Readonly<{ sent: number; total: number }> | undefined;
+  /** Fork: the earlier file this one replaces; null once the sender chose none. */
+  version?: VersionTarget | null | undefined;
 }>;
 export type AttachmentDraft = {
   snapshot(): readonly DraftAttachment[];
@@ -31,6 +34,8 @@ export type AttachmentDraft = {
   addUploaded(attachment: UploadedAttachment): void;
   adopt(files: readonly DraftAttachment[]): boolean;
   prepareForSend(signal: AbortSignal): Promise<readonly UploadedAttachment[]>;
+  /** Fork: records which earlier file an attachment replaces, or none. */
+  setVersion(id: string, version: VersionTarget | null): void;
   remove(id: string): void;
   retry(id: string): void;
   cancel(): void;
@@ -437,7 +442,12 @@ export function attachmentDraft(
           signal.throwIfAborted();
           const current = items.find((candidate) => candidate.id === item.id);
           if (!current) throw new UploadError("cancelled");
-          uploaded.push(await start(current, signal));
+          const result = await start(current, signal);
+          // Fork: read the choice after the upload; it may change meanwhile.
+          const version = items.find(
+            (candidate) => candidate.id === item.id,
+          )?.version;
+          uploaded.push(version ? { ...result, supersedes: version } : result);
         }
       } catch (error) {
         // Eager siblings share this send owner. Freeze retryable state before
@@ -446,6 +456,9 @@ export function attachmentDraft(
         throw error;
       }
       return uploaded;
+    },
+    setVersion(id: string, version: VersionTarget | null) {
+      if (items.some((item) => item.id === id)) replace(id, { version });
     },
     remove(id: string) {
       const uploaded = items.find((item) => item.id === id)?.uploaded;
