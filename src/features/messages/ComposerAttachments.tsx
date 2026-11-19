@@ -5,7 +5,7 @@ import type {
 import { AttachmentView } from "../conversation/AttachmentView";
 import { AttachmentDownloadContext } from "./AttachmentDownloadContext";
 import { useConversationPresentation } from "../conversation/ConversationPresentation";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { FileTypeIcon } from "./FileTypeIcon";
 import fileIconStyles from "./FileTypeIcon.module.css";
 import { Button } from "../../shared/design-system/ui/Button";
@@ -44,7 +44,10 @@ export function ComposerAttachments({
   retry,
   media,
   onExitComplete,
+  version,
 }: {
+  /** Fork: the earlier-version picker shown under a file. */
+  version?: ((item: DraftAttachment) => ReactNode) | undefined;
   renderers?: ContributionReader<AttachmentRenderer> | undefined;
   media(url: string): string | undefined;
   items: readonly DraftAttachment[];
@@ -124,6 +127,7 @@ export function ComposerAttachments({
                     disabled={disabled}
                     remove={remove}
                     retry={retry}
+                    version={version}
                     preview={(trigger) => {
                       restoreFocus.current = trigger;
                       setSelected(item.id);
@@ -236,7 +240,9 @@ function AttachmentItem({
   retry,
   media,
   preview,
+  version,
 }: {
+  version?: ((item: DraftAttachment) => ReactNode) | undefined;
   preview(trigger: HTMLButtonElement): void;
   renderers?: ContributionReader<AttachmentRenderer> | undefined;
   media(url: string): string | undefined;
@@ -413,6 +419,7 @@ function AttachmentItem({
           {uploadFailed ? size : `${size} · ${status}`}
         </span>
         {failed && <span className="sr-only">Preview unavailable</span>}
+        {!uploadFailed && !image && !video && version?.(item)}
       </div>
       {uploadFailed && (
         <p className={styles.error} role="alert">

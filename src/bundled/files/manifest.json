@@ -1,0 +1,7 @@
+{
+  "id": "k2.files",
+  "name": "Files",
+  "apiVersion": 1,
+  "description": "List every file and link shared in a channel, with newer versions grouped over older ones.",
+  "discovery": { "category": "productivity" }
+}

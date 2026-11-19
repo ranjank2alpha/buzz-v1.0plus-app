@@ -58,6 +58,8 @@ import remindersManifest from "./reminders/manifest.json";
 import * as reminders from "./reminders";
 import reposManifest from "./repos/manifest.json";
 import * as repos from "./repos";
+import filesManifest from "./files/manifest.json";
+import * as files from "./files";
 import changesetsManifest from "./changesets/manifest.json";
 import * as changesets from "./changesets";
 import workflowsManifest from "./workflows/manifest.json";
@@ -240,6 +242,12 @@ export const bundledPlugins: readonly BundledPlugin[] = [
     manifest: { ...piManifest, apiVersion: 1 },
     module: pi,
     enabledByDefault: false,
+  },
+  {
+    // Fork (k2alpha): file versions and the channel Files panel.
+    manifest: { ...filesManifest, apiVersion: 1 },
+    module: files,
+    enabledByDefault: true,
   },
   {
     manifest: { ...changesetsManifest, apiVersion: 1 },

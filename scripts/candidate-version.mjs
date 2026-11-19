@@ -14,7 +14,8 @@ if (release) {
   // A stable or beta version, taken from its tag rather than tauri.conf.json.
   assert.match(
     release,
-    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-beta\.[1-9]\d*)?$/,
+    // Fork (k2alpha): `-N` marks the Nth fork build on an upstream release.
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-beta\.[1-9]\d*|-[1-9]\d*)?$/,
   );
   version = release;
 } else {

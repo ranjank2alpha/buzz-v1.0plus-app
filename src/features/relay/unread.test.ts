@@ -7579,3 +7579,43 @@ it("inactive entry sees nothing until the open visit resumes", async () => {
     expect(h.journal()?.state.frontiers[`seen:msg:${mention.id}`]).toBe(100),
   );
 });
+
+// Fork (k2alpha): `@channel` is a mention for every member but its author;
+// `@here` is flagged for the notification path and is never a mention.
+it.each([
+  { scope: "channel", mentioned: true },
+  { scope: "here", mentioned: false },
+])("treats a $scope scope as the fork defines it", ({ scope, mentioned }) => {
+  const h = setup();
+  h.grant("room");
+  const row = signed(h.alice, {
+    kind: 9,
+    created_at: 11,
+    content: `@${scope} heads up`,
+    tags: [
+      ["h", "room"],
+      ["mention-scope", scope],
+    ],
+  });
+  h.emit([row]);
+  const attention = h.session.unread.attention("room", row.id);
+  expect(attention.category).toBe(mentioned ? "mention" : undefined);
+  expect(attention.mentioned).toBe(mentioned ? true : undefined);
+  expect(attention.here).toBe(scope === "here" ? true : undefined);
+});
+
+it("does not mention the author of their own @channel", () => {
+  const h = setup();
+  h.grant("room");
+  const row = signed(h.viewer, {
+    kind: 9,
+    created_at: 11,
+    content: "@channel heads up",
+    tags: [
+      ["h", "room"],
+      ["mention-scope", "channel"],
+    ],
+  });
+  h.emit([row]);
+  expect(h.session.unread.attention("room", row.id).category).toBeUndefined();
+});
