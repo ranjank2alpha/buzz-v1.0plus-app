@@ -509,6 +509,8 @@ fn bundled_manifests_for(gateway: Option<&gateway::Native>) -> Vec<Manifest> {
             .expect("bundled mermaid manifest"),
         serde_json::from_str(include_str!("../../../src/bundled/charts/manifest.json"))
             .expect("bundled charts manifest"),
+        serde_json::from_str(include_str!("../../../src/bundled/files/manifest.json"))
+            .expect("files manifest"),
         serde_json::from_str(include_str!(
             "../../../src/bundled/identity-naming/manifest.json"
         ))
@@ -628,6 +630,7 @@ fn enabled_by_default(id: &str) -> bool {
             | "buzz.relay-staff"
             | "buzz.typesafe"
             | "buzz.plugin-development"
+            | "k2.files"
     ) || org_plugins()
         .iter()
         .any(|plugin| plugin.manifest.id == id && plugin.enabled_by_default)
