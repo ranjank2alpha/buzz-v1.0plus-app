@@ -464,6 +464,8 @@ pub fn bundled_manifests() -> Vec<Manifest> {
             "../../../src/bundled/file-viewer/manifest.json"
         ))
         .expect("bundled file viewer manifest"),
+        serde_json::from_str(include_str!("../../../src/bundled/files/manifest.json"))
+            .expect("files manifest"),
         serde_json::from_str(include_str!(
             "../../../src/bundled/identity-naming/manifest.json"
         ))
@@ -574,6 +576,7 @@ fn enabled_by_default(id: &str) -> bool {
             | "buzz.relay-staff"
             | "buzz.typesafe"
             | "buzz.plugin-development"
+            | "k2.files"
     )
 }
 /// Bundled ids that older profiles may still hold as installed plugins.
