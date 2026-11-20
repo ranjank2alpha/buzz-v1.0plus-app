@@ -1,102 +1,70 @@
-name: Desktop previews
+name: Release Buzz Foundation
 
+# Builds, signs, and publishes a new Buzz Foundation desktop release whenever a
+# version tag (e.g. `v1.0.5-1`) is pushed. Existing installs with the Tauri
+# updater configured (see src-tauri/tauri.conf.json's plugins.updater.endpoints)
+# poll this repo's GitHub Releases and prompt users to update automatically.
 on:
-  # A daily preview from main.
-  schedule:
-    - cron: "37 9 * * *"
-  # A preview of main right after each published stable release (always in
-  # main's history), so preview installs get its code without leaving the
-  # preview feed. The release only gates the run; main's head is built.
-  workflow_run:
-    workflows: [Desktop stable release]
-    types: [completed]
-  workflow_dispatch:
-    inputs:
-      candidates:
-        description: Build Windows/Linux candidates only (no publishing or macOS signing)
-        type: boolean
-        default: false
-      promote_version:
-        description: Promote a validated version (e.g. 1.0.2-preview.3) to the preview updater feed; no build
-        type: string
-        default: ""
-
-permissions:
-  contents: read
-
-concurrency:
-  # Stable completions the source job skips get their own group, so they can't
-  # replace a legitimate preview waiting in the shared one. Keep this test
-  # identical to the source job's.
-  group: >-
-    desktop-preview-${{ !(github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' && !contains(github.event.workflow_run.head_branch, '-'))) &&
-      format('skipped-{0}', github.run_id) || (inputs.candidates && github.ref || 'macos-prerelease') }}
-  cancel-in-progress: false
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
 
 jobs:
-  source:
-    # Only a successful stable vX.Y.Z publication starts a preview; betas
-    # (vX.Y.Z-beta.N) contain '-' and do not.
-    if: >-
-      ${{ github.repository == 'block/buzz-app' && !inputs.promote_version && (inputs.candidates || github.ref == 'refs/heads/main') &&
-          (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' &&
-            github.event.workflow_run.event == 'push' && !contains(github.event.workflow_run.head_branch, '-'))) }}
-    name: Derive preview version
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # All history for the stable base and every tag for the preview counter.
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
-      - name: Derive the preview version
-        id: version
-        run: node scripts/preview-version.mjs HEAD
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: ""
 
-  desktop:
-    # Candidate-only runs may build a feature branch; previews build main.
-    needs: source
-    if: github.repository == 'block/buzz-app' && !inputs.promote_version && (inputs.candidates || github.ref == 'refs/heads/main')
-    uses: ./.github/workflows/desktop-build.yml
+    runs-on: ${{ matrix.platform }}
     permissions:
       contents: write
-      id-token: write
-    secrets: inherit
-    with:
-      candidates: ${{ inputs.candidates == true }}
-      preview_version: ${{ needs.source.outputs.version }}
 
-  promote_preview:
-    name: Promote verified preview
-    needs: [desktop]
-    # Explicit promotions skip the build; automatic promotions require it, including publication, to succeed.
-    if: >-
-      ${{ !cancelled() && github.repository == 'block/buzz-app' && github.ref == 'refs/heads/main' && !inputs.candidates &&
-          ((inputs.promote_version != '' && needs.desktop.result == 'skipped') ||
-           (inputs.promote_version == '' && needs.desktop.result == 'success')) }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Verify and publish preview feed
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          VERSION: ${{ inputs.promote_version || needs.desktop.outputs.version }}
-        run: scripts/promote-updater-feed.sh preview-feed "$VERSION"
+      - uses: actions/checkout@v4
 
-      - name: Prune old preview releases and tags
-        if: success()
+      - name: Add Rust target
+        shell: bash
+        run: rustup target add "${{ matrix.target }}"
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.8.0
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build sidecar binaries
+        run: |
+          node scripts/build-goose-acp.mjs
+          node scripts/build-agent-command.mjs
+          node scripts/build-buzz-cli.mjs
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: node scripts/prune-preview-releases.mjs --apply
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          BUZZ_UPDATER_PUBLIC_KEY: "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBNjZEMTFCNjJFNzk1NkMKUldSc2xlZGlHOUZtR3VUTXhMcXAxeHFRSCtYeklYQjlvaFJOeDhWbkFtYkF6MTVmbm5pOTVIdHMK"
+          BUZZ_UPDATER_ENDPOINT: "https://github.com/ranjank2alpha/buzz-v1.0plus-app/releases/latest/download/latest.json"
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Buzz Foundation ${{ github.ref_name }}"
+          releaseBody: "Buzz Foundation release ${{ github.ref_name }}."
+          releaseDraft: false
+          prerelease: false
+          args: --target ${{ matrix.target }} ${{ matrix.args }}
