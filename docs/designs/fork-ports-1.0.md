@@ -37,7 +37,7 @@ One marker tag, `["mention-scope", "channel" | "here"]`, resolved against the ch
 | Upstream file | Edit |
 | --- | --- |
 | `src/features/relay/attachments.ts` | `supersedes` tag from the attachment |
-| `src/features/messages/attachment-draft.ts`, `ComposerAttachments.tsx`, `MessageComposer.tsx` | Version choice and picker; `MessageComposer` only passes props |
+| `src/features/messages/attachment-draft.ts`, `ComposerAttachments.tsx`, `MessageComposer.tsx` | Version choice and picker, saved with a draft's files so a reload keeps it (since `1.0.6-1`); `MessageComposer` only passes props |
 | `src/bundled/index.ts` | Files plugin entry |
 | `src/features/relay/messages.ts` | Scope tag in `send` and `reply`; forwards drop `supersedes` |
 | `src/features/relay/unread.ts` | `@channel` in `mentionsViewer`; `here` flag on attention |

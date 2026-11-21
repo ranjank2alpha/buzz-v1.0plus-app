@@ -11,6 +11,10 @@ import {
 import { prepareAttachment } from "./prepare-attachment";
 import { clearView, readView, writeView } from "../../shared/view-state";
 import type { VersionTarget } from "../fork/file-versions/supersedes";
+import {
+  takeDraftVersion,
+  withDraftVersion,
+} from "../fork/file-versions/draft-version";
 
 export type DraftAttachment = Readonly<{
   id: string;
@@ -124,7 +128,12 @@ function restoreFiles([scope, key]: SavedFiles) {
   return (Array.isArray(saved) ? saved : [])
     .filter(isUploadedAttachment)
     .slice(0, MAX_ATTACHMENT_FILES)
-    .map(uploadedItem);
+    .map((file): DraftAttachment => {
+      // Fork: the file's version choice comes back with it.
+      const { uploaded, version } = takeDraftVersion(file);
+      const item = uploadedItem(uploaded);
+      return version === undefined ? item : { ...item, version };
+    });
 }
 
 /** Tab-local files survive navigation. With `saved`, uploaded files also
@@ -150,8 +159,11 @@ export function attachmentDraft(
   let paused = false;
   let active = new Map<string, UploadTask>();
   let pending = new Map<string, Promise<UploadedAttachment>>();
+  // Fork: each file is saved with its version choice.
   const uploadedFiles = () =>
-    items.flatMap((item) => (item.uploaded ? [item.uploaded] : []));
+    items.flatMap((item) =>
+      item.uploaded ? [withDraftVersion(item.uploaded, item.version)] : [],
+    );
   // Save only this store's changes, so a stale window cannot rewrite a clear.
   let savedFiles = JSON.stringify(uploadedFiles());
   const save = () => {
