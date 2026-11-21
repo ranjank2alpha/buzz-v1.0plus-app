@@ -104,7 +104,12 @@ export function AttachmentVersionPicker({
             ]
           : []),
       ]
-    : [{ label: "Earlier version", options: [none, ...others.map(fileOption)] }];
+    : [
+        {
+          label: "Earlier version",
+          options: [none, ...others.map(fileOption)],
+        },
+      ];
 
   return (
     <div className={styles.picker}>
@@ -119,7 +124,9 @@ export function AttachmentVersionPicker({
         }
         groups={groups}
         onValueChange={(value) => {
-          const file = allFiles.find((candidate) => candidate.eventId === value);
+          const file = allFiles.find(
+            (candidate) => candidate.eventId === value,
+          );
           setVersion(item.id, file ? target(file) : null);
         }}
       />
