@@ -1,6 +1,6 @@
 # Design: fork ports to Buzz 1.0
 
-Approved 20 Nov 2026 (Ranjan Kant). Fork: `ranjank2alpha/buzz-v1.0plus-app`, first build `1.0.5-1` on upstream `v1.0.5` (`f315ef5`).
+Approved 20 Nov 2026 (Ranjan Kant). Fork: `ranjank2alpha/buzz-v1.0plus-app`, first build `1.0.5-1` on upstream `v1.0.5` (`f315ef5`). Moved to upstream `v1.0.6` (`be9373d`) as `1.0.6-1` on 21 Nov 2026 with no change to the ports.
 
 ## Summary
 
